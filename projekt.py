@@ -5,7 +5,10 @@ Created on Fri Jan 15 19:35:03 2016
 @author: aga
 """
 
-import Image
-im = Image.open("godhier.jpg")
-im.show(im)
-print ("Hello grupo")
+from skimage import data, io, filters
+
+image = imread('godhier.jpg')
+edges = filters.sobel(image)
+io.imshow(edges)
+io.show()
+

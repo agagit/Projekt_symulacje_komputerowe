@@ -6,5 +6,5 @@ Created on Fri Jan 15 19:35:03 2016
 """
 
 import Image
-im = Image.open("kwiatek.gif")
+im = Image.open("godhier.jpg")
 im.show(im)

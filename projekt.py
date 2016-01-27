@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan 15 19:35:03 2016
+import numpy as np
+import matplotlib.pyplot as plt
 
-@author: aga magda kasia
-"""
-
+from skimage import data
+from skimage.feature import match_template
+#from imread import imread, imsave
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +16,9 @@ from skimage.measure import label
 from skimage.morphology import closing, square
 from skimage.measure import regionprops
 from skimage.color import label2rgb, rgb2gray
+from skimage.data import imread
 
+#WCZYTYWANIE OBRAZKA
 image = imread('o.jpg')
 image = np.invert(image)
 image = rgb2gray(image)
@@ -51,3 +52,128 @@ for region in regionprops(label_image):
     ax.add_patch(rect)
 
 plt.show()
+
+
+#WCZYTYWANIE WZORU
+wzor = rgb2gray(np.invert(imread('wzor.jpg')))
+wzor2 = rgb2gray(np.invert(imread('wzor_ch.jpg')))
+
+#POROWNYWANIE WZORU Z OBRAZKIEM
+result= match_template(image, wzor)
+result2=result
+result_ch=match_template(image, wzor2)
+result_ch2=result_ch
+
+fig = plt.figure(figsize=(12, 5))
+ax1 = plt.subplot(1, 3, 1)
+ax2 = plt.subplot(1, 3, 2 )
+ax3 = plt.subplot(1, 3, 3, sharex=ax2, sharey=ax2)
+
+ax1.imshow(wzor)
+ax1.set_axis_off()
+ax1.set_title('template')
+
+
+
+#WYSZUKIWANIE NAJWIEKSZYCH WARTOSCI
+
+ax2.imshow(image)
+ax2.set_axis_off()
+ax2.set_title('image')
+hwzor, wwzor = wzor.shape
+ch_hwzor, ch_wwzor = wzor2.shape
+
+u=[]
+ch=[]
+
+ij = np.unravel_index(np.argmax(result2), result.shape)
+x, y = ij[::-1]
+u.append((x, 'u'))
+
+kl = np.unravel_index(np.argmax(result_ch2), result_ch.shape)
+x2, y2 = kl[::-1]
+ch.append((x2 , 'ch'))
+
+rect = plt.Rectangle((x, y), wwzor, hwzor, edgecolor='r', facecolor='none')
+ax2.add_patch(rect)
+
+
+rect2 = plt.Rectangle((x2, y2), ch_wwzor, ch_hwzor, edgecolor='r', facecolor='none')
+ax2.add_patch(rect2)
+
+result2[ij]=0
+result_ch2[kl]=0
+
+
+#kl[0]=np.unravel_index(np.argmax(result2), result.shape)
+#z, m= kl[::-1]
+
+
+i = 0
+while (np.argmax(result2) > 6000):
+    
+    ij=np.unravel_index(np.argmax(result2), result.shape)
+    x, y= ij[::-1]
+    u.append((x , 'u'))
+    
+    result2[ij]=0
+    i=i+1
+    rect = plt.Rectangle((x, y), wwzor, hwzor, edgecolor='r', facecolor='none')
+    ax2.add_patch(rect)
+
+i = 0
+while (np.argmax(result_ch2) > 29000):
+    
+    kl=np.unravel_index(np.argmax(result_ch2), result_ch.shape)
+    x2, y2= kl[::-1]
+    ch.append((x2 , 'ch'))
+    result_ch2[kl]=0
+    i=i+1
+    rect2 = plt.Rectangle((x2, y2), ch_wwzor, ch_hwzor, edgecolor='r', facecolor='none')
+    ax2.add_patch(rect2)
+
+slowo=[]
+slowo.extend(ch)
+slowo.extend(u)
+
+#TERAZ SORTOWANIE
+slowo.sort()
+literki=[]
+for i in range(len(slowo)):
+    literki.append(slowo[i][1])
+
+
+print(literki)
+print '' .join(literki)
+# highlight matched region
+
+#rect = plt.Rectangle((x[0], y[0]), wwzor, hwzor, edgecolor='r', facecolor='none')
+#rect2 = plt.Rectangle((z, m), wwzor, hwzor, edgecolor='r', facecolor='none')
+#ax2.add_patch(rect)
+#ax2.add_patch(rect2)
+
+
+
+
+
+
+ax3.imshow(result)
+ax3.set_axis_off()
+ax3.set_title('`match_template`\nresult')
+# highlight matched region
+ax3.autoscale(False)
+#ax3.plot(x, y, 'o', markeredgecolor='r', markerfacecolor='none', markersize=10)
+
+
+plt.show()
+
+#kanal red
+#image[0:39 , 0:46, 0]
+
+
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.imshow(result_ch2)
+
+plt.show()
+
+

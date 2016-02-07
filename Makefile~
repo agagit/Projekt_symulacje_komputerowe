@@ -1,0 +1,23 @@
+TARGET := projekt.py
+RUNNER := python
+run:
+	@echo "running...", $(RUNNER) $(TARGET)
+	
+
+clean:
+	@echo " Cleaning..."; 
+
+
+
+#Generate-doc:	
+#	-doxygen -g 
+#	-echo 'PROJECT_NAME           = "MAKE"' >> Doxyfile
+#	-echo 'OUTPUT_LANGUAGE        = English' >> Doxyfile
+#	-echo 'INPUT        =  ./include ./src ./' >> Doxyfile
+#	-echo 'FILE_PATTERNS        =  *.h *.cpp' >> Doxyfile
+#	-doxygen Doxyfile
+#	-firefox ./html/index.html
+	
+.PHONY: Generate-doc
+.PHONY: clean
+.PHONY: run

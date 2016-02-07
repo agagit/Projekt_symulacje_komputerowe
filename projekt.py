@@ -1,179 +1,178 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jan 29 16:55:38 2016
+
+@author: Kasia Dziegiel, Magda Szpor, Agnieszka Szymczuk
+"""
+#IMPORTUJEMY BIBLIOTEKI: DO OBLICZEN NUMERYCZNYCH, DO RYSOWANIA ORAZ DO ANALIZY OBRAZU
 import numpy as np
 import matplotlib.pyplot as plt
-
-from skimage import data
 from skimage.feature import match_template
 #from imread import imread, imsave
-
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-
-#from skimage import data
-from skimage.filters import threshold_otsu
-from skimage.segmentation import clear_border
-from skimage.measure import label
-from skimage.morphology import closing, square
-from skimage.measure import regionprops
-from skimage.color import label2rgb, rgb2gray
+from skimage.color import rgb2gray
 from skimage.data import imread
 
-#WCZYTYWANIE OBRAZKA
-image = imread('o.jpg')
-image = np.invert(image)
-image = rgb2gray(image)
-# apply threshold
-thresh = threshold_otsu(image)
-bw = closing(image > thresh, square(3))
+#WCZYTYWANIE OBRAZKOW, KTORE BEDZIEMY ODCZYTYWAC
+#PRZEKONWERTOWUJEMY OBRAZKI Z KOLOROWYCH NA CZARNOBIALE I ODWRACAMY(TWORZYMY NEGATYW) 
+image_khufu = rgb2gray(np.invert(imread('chufu.jpg')))
+image_kliopatra = rgb2gray(np.invert(imread('kleopatra.jpg')))
+image_ptolemeus = rgb2gray(np.invert(imread('ptolemeusz.jpg')))
+#WCZYTYWANIE WZORCOW - LITERY EGIPSKIE
+wzor_u = rgb2gray(np.invert(imread('wzorzec_u.JPG')))
+wzor_kh = rgb2gray(np.invert(imread('wzorzec_kh.JPG')))
+wzor_f = rgb2gray(np.invert(imread('wzorzec_f.JPG')))
 
-# remove artifacts connected to image border
-cleared = bw.copy()
-clear_border(cleared)
+wzor_a = rgb2gray(np.invert(imread('wzorzec_a.JPG')))
+wzor_i = rgb2gray(np.invert(imread('wzorzec_i.JPG')))
+wzor_k = rgb2gray(np.invert(imread('wzorzec_k.JPG')))
+wzor_l = rgb2gray(np.invert(imread('wzorzec_l.JPG')))
+wzor_m = rgb2gray(np.invert(imread('wzorzec_m.JPG')))
+wzor_o = rgb2gray(np.invert(imread('wzorzec_o.JPG')))
+wzor_p = rgb2gray(np.invert(imread('wzorzec_p.JPG')))
+wzor_r = rgb2gray(np.invert(imread('wzorzec_r.JPG')))
 
-# label image regions
-label_image = label(cleared)
-borders = np.logical_xor(bw, cleared)
-label_image[borders] = -1
-image_label_overlay = label2rgb(label_image, image=image)
+wzor_s = rgb2gray(np.invert(imread('wzorzec_s.JPG')))
+wzor_t = rgb2gray(np.invert(imread('wzorzec_t.JPG')))
 
-fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(6, 6))
-ax.imshow(image_label_overlay)
+#LISTA POMOCNICZA W KTOREJ PRZETRZYMYWAC BEDZIEMY ZNALEZIONE HIEROGLIFY/LITERY WRAZ Z ICH POZYCJAMI
+slowo=[]
+#SLOWNIK EGIPSKO-POLSKI 
+slowniczek={'khufu':"Cheops" , 'ptolmiis':"Ptolemeusz", 'kliopatra':"Kleopatra"}
 
-for region in regionprops(label_image):
-
-    # skip small images
-    if region.area < 100:
-        continue
-
-    # draw rectangle around segmented coins
-    minr, minc, maxr, maxc = region.bbox
-    rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr,
-                              fill=False, edgecolor='red', linewidth=2)
-    ax.add_patch(rect)
-
-plt.show()
-
-
-#WCZYTYWANIE WZORU
-wzor = rgb2gray(np.invert(imread('wzor.jpg')))
-wzor2 = rgb2gray(np.invert(imread('wzor_ch.jpg')))
-
-#POROWNYWANIE WZORU Z OBRAZKIEM
-result= match_template(image, wzor)
-result2=result
-result_ch=match_template(image, wzor2)
-result_ch2=result_ch
-
-fig = plt.figure(figsize=(12, 5))
-ax1 = plt.subplot(1, 3, 1)
-ax2 = plt.subplot(1, 3, 2 )
-ax3 = plt.subplot(1, 3, 3, sharex=ax2, sharey=ax2)
-
-ax1.imshow(wzor)
-ax1.set_axis_off()
-ax1.set_title('template')
-
-
-
-#WYSZUKIWANIE NAJWIEKSZYCH WARTOSCI
-
-ax2.imshow(image)
-ax2.set_axis_off()
-ax2.set_title('image')
-hwzor, wwzor = wzor.shape
-ch_hwzor, ch_wwzor = wzor2.shape
-
-u=[]
-ch=[]
-
-ij = np.unravel_index(np.argmax(result2), result.shape)
-x, y = ij[::-1]
-u.append((x, 'u'))
-
-kl = np.unravel_index(np.argmax(result_ch2), result_ch.shape)
-x2, y2 = kl[::-1]
-ch.append((x2 , 'ch'))
-
-rect = plt.Rectangle((x, y), wwzor, hwzor, edgecolor='r', facecolor='none')
-ax2.add_patch(rect)
-
-
-rect2 = plt.Rectangle((x2, y2), ch_wwzor, ch_hwzor, edgecolor='r', facecolor='none')
-ax2.add_patch(rect2)
-
-result2[ij]=0
-result_ch2[kl]=0
-
-
-#kl[0]=np.unravel_index(np.argmax(result2), result.shape)
-#z, m= kl[::-1]
-
-
-i = 0
-while (np.argmax(result2) > 6000):
+#FUNKCJA PRZESZUKUJACA OBRAZ. NALEZY PODAC JEJ WZORZEC, OBRAZ NA KTORYM BEDZIE SZUKAC, TOLERANCJE Z PRZEDZIALU OD ZERA DO 1
+def wykrywacz(image_wzor,image_obraz,tolerancja,litera_egipska):
+    #Tworzenie okienka do wyswietlania wzorca i obrazow na nim odnalezionych  
+    fig = plt.figure(figsize=(12, 5))
+    #Podzial okienka  na dwa obszary   
+    ax1 = plt.subplot(1, 2, 1)
+    ax2 = plt.subplot(1, 2, 2)
     
+    #Result to wynik operacji porownywania wzorca z podstawowym obrazem, jego wynikiem jest lista, w ktorej znajduje sie wspolczynnik korelacji dla poszczegolnych pikseli obrazu podstawowego
+    result= match_template(image_obraz, image_wzor)
+    #Pomocnicza zmienna w ktorej przechowywana bedzie kopia result, na ktorej bedziemy operowac    
+    result2=result
+    #wysokosc i szerokosc wzoru    
+    hwzor, wwzor = image_wzor.shape
+    #lista w ktorej  bedziemy zapisywac znalezione hieroglify    
+    literka=[]
+    #listy, w ktorej zapisywac bedziemy wspolrzedne znalezionych hieroglifow
+    x1=[]
+    y1=[]
+    #Indeks elementu listy result2, ktory posiada najwyzsza wartosc korelacji(czyli jest najbardziej prawdopodobne ze w tym miejscu znajduje sie hieroglif)
     ij=np.unravel_index(np.argmax(result2), result.shape)
-    x, y= ij[::-1]
-    u.append((x , 'u'))
-    
-    result2[ij]=0
-    i=i+1
+    #pobranie skladowych indeksu i odwrocenie ich kolejnosci
+    x, y= ij[::-1]        
+    #dodanie do list wspolrzednych indeksu najwyzszej wartosci result   
+    x1.append(x)
+    y1.append(y)
+    #do listy literka dodajemy wartosc wspolrzednej x (by pozniej posortowac odpowienio hieroglify), literke oraz informacyjnie wartosc w result 
+    literka.append([x , litera_egipska,np.max(result2)])
+    #zerujemy najwieksza wartosc  w result by znalezc kolejna najwieksza wartosc w innymm miejscu
+    result2[ij]=0    
+    #na wszelki wypadek gdyby najwyzsza wartosc okazala sie byc w poblizu starej wartosci, zerujemy rowniez elementy obok
+    result2[(y,x-1)]=0
+    result2[(y,x+1)]=0    
+
+    i = 0
+    #w pierwszej czesci okienka bedziemy pokazywac wzor    
+    ax1.imshow(image_wzor)
+    ax1.set_axis_off()
+    ax1.set_title('template')
+    #w drugiej czesci okienka bedziemy pokazywac obraz, na ktorym szukami wzoru
+    ax2.imshow(image_obraz)
+    ax2.set_axis_off()
+    ax2.set_title('image')
+
+    #rysujemy prostokat o wymiarach naszego wzoru w miejscu gdzie pojawil sie nasz najbardzije prawdopodobny element
     rect = plt.Rectangle((x, y), wwzor, hwzor, edgecolor='r', facecolor='none')
     ax2.add_patch(rect)
-
-i = 0
-while (np.argmax(result_ch2) > 29000):
+    #Tworzymy nowe okienko, w ktorym wyswietlimy 'result' czyli wynik porownywania
+    fig, ax = plt.subplots(figsize=(12,1))
+    ax.imshow(result)
+    plt.show()
     
-    kl=np.unravel_index(np.argmax(result_ch2), result_ch.shape)
-    x2, y2= kl[::-1]
-    ch.append((x2 , 'ch'))
-    result_ch2[kl]=0
-    i=i+1
-    rect2 = plt.Rectangle((x2, y2), ch_wwzor, ch_hwzor, edgecolor='r', facecolor='none')
-    ax2.add_patch(rect2)
+    #Petla, w ktorej bedziemy powtarzac wszystkie powyzsze operacje az do momentu w ktorym wspolczynnik korelacji bedzie nizszy niz nasza tolerancja
+    while (np.max(result2) > tolerancja):
+        ij=np.unravel_index(np.argmax(result2), result.shape)
+        x, y= ij[::-1]
+        x1.append(x)
+        y1.append(y)
+        
+        literka.append([x , litera_egipska,np.max(result2)])
+        
+        result2[ij]=0
 
-slowo=[]
-slowo.extend(ch)
-slowo.extend(u)
+        result2[(y,x-1)]=0
+        result2[(y,x+1)]=0    
 
-#TERAZ SORTOWANIE
+ 
+        i=i+1
+        rect = plt.Rectangle((x1[i], y1[i]), wwzor, hwzor, edgecolor='r', facecolor='none')
+        ax2.add_patch(rect)
+    #po wyjsciu z petli wszystkie zebrane elementy w liscie literka przypisujemy do globalnej listy slowo    
+    slowo.extend(literka)
+    
+#PROGRAM GLOWNY
+#Wywolywanie funkcji dla odpowiednich obrazow i wzorow
+#Nalezy odkomentowac odpowiednie czesci 
+
+#--------------------------------------------------------
+
+##CHEOPS
+#
+p=wykrywacz(wzor_u, image_khufu, 0.87, 'u')
+p2=wykrywacz(wzor_kh, image_khufu, 0.99, 'kh')
+p3=wykrywacz(wzor_f, image_khufu, 0.95, 'f')
+
+#--------------------------------------------------------
+
+##KLEOPATRA
+
+#p4=wykrywacz(wzor_a, image_kliopatra, 0.92, 'a')
+#p5=wykrywacz(wzor_i, image_kliopatra, 0.95, 'i')
+#p6=wykrywacz(wzor_k, image_kliopatra, 0.99, 'k')
+#p7=wykrywacz(wzor_l, image_kliopatra, 0.99, 'l')
+#p8=wykrywacz(wzor_t, image_kliopatra, 0.97, 't')
+#p9=wykrywacz(wzor_o, image_kliopatra, 0.95, 'o')
+#p10=wykrywacz(wzor_p, image_kliopatra, 0.95, 'p')
+#p11=wykrywacz(wzor_r, image_kliopatra, 0.95, 'r')
+
+#--------------------------------------------------------
+
+###PROMETEUSZ
+#
+#p12=wykrywacz(wzor_p, image_ptolemeus, 0.98, 'p')
+#p13=wykrywacz(wzor_s, image_ptolemeus, 0.98, 's')
+#p14=wykrywacz(wzor_t, image_ptolemeus, 0.98, 't')
+#p15=wykrywacz(wzor_o, image_ptolemeus, 0.95, 'o')
+#p16=wykrywacz(wzor_l, image_ptolemeus, 0.95, 'l')
+#p17=wykrywacz(wzor_m, image_ptolemeus, 0.97, 'm')
+#p17=wykrywacz(wzor_i, image_ptolemeus, 0.845, 'i')
+
+print("")
+print("Znalezione:")
+print(slowo)
+print("")
+#Sortowanie listy - domyslnie sortowanie przechodzi po wspolrzednych x
 slowo.sort()
+
 literki=[]
+#Z posortowanej listy slowo wyciagamy element odpowiadajacy literze alfabetu ktorej odpowiada hieroglif
 for i in range(len(slowo)):
     literki.append(slowo[i][1])
-
-
+print(" ")
+print("Znalezione literki (PO SORTOWANIU) :")
 print(literki)
-print '' .join(literki)
-# highlight matched region
 
-#rect = plt.Rectangle((x[0], y[0]), wwzor, hwzor, edgecolor='r', facecolor='none')
-#rect2 = plt.Rectangle((z, m), wwzor, hwzor, edgecolor='r', facecolor='none')
-#ax2.add_patch(rect)
-#ax2.add_patch(rect2)
-
-
-
-
-
-
-ax3.imshow(result)
-ax3.set_axis_off()
-ax3.set_title('`match_template`\nresult')
-# highlight matched region
-ax3.autoscale(False)
-#ax3.plot(x, y, 'o', markeredgecolor='r', markerfacecolor='none', markersize=10)
-
+print(" ")
+#laczenie elementow listy w wyraz
+slowko= '' .join(literki)
+print("Po egipsku:")
+print(slowko)
+print(" ")
+print("Po polsku:")
+#tlumaczenie ze slownika slowniczek
+print(slowniczek[slowko])
 
 plt.show()
-
-#kanal red
-#image[0:39 , 0:46, 0]
-
-
-fig, ax = plt.subplots(figsize=(8, 8))
-ax.imshow(result_ch2)
-
-plt.show()
-
-
